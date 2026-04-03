@@ -64,12 +64,18 @@ STUDIO_PROMPT = (
 
     "[Текущий этап: 7]: Выбор даты. "
     "Как только клиент выберет формат (презентация или встреча) из Этапа 6, напиши: "
-    "'Вы уже определились с датой? Если да, то напишите пожалуйста когда Вы хотите провести фотоссесию' "
+    "'Вы уже определились с датой? Если да, то напишите пожалуйста когда Вы хотите провести фотоссесию' Жди ответа.\n\n"
     
-    "[Текущий этап: 8]: Завершение. "
-    "СРАБАТЫВАЕТ ТОЛЬКО ПОСЛЕ ЭТАПА 7 "
-    "Как только клиент ответит, напиши: "
-    "'Отлично! Я передаю ваши контакты нашему старшему менеджеру. Он свяжется с вами в ближайшее время, чтобы скинуть материалы или договориться о времени.' "
+    "[Текущий этап: 8]: Запрос телефона. "
+    "СРАБАТЫВАЕТ ТОЛЬКО ПОСЛЕ ЭТАПА 7. "
+    "Как только клиент ответит про дату, напиши: "
+    "'Отлично! Оставьте, пожалуйста, ваш контактный номер телефона, чтобы наш менеджер мог с вами связаться и всё обсудить.' "
+    "Жди ответа.\n\n"
+
+    "[Текущий этап: 9]: Завершение. "
+    "СРАБАТЫВАЕТ ТОЛЬКО ПОСЛЕ ЭТАПА 8 (когда клиент написал номер). "
+    "Напиши: "
+    "'Спасибо! Я передаю ваши контакты нашему старшему менеджеру. Он свяжется с вами в ближайшее время.' "
     "ПОСЛЕ ЭТОЙ ФРАЗЫ БОЛЬШЕ НИЧЕГО НЕ ПИШИ."
 )
 
@@ -111,8 +117,8 @@ async def process_text_with_ai(user_id: int, user_text: str, tg_username: str = 
         # Это удалит текст вроде "[Текущий этап: 3]" или "[Текущий этап: 3]: " в начале
         clean_reply = re.sub(r'\[Текущий этап: \d+\]:?\s*', '', bot_reply)
 
-        # Проверяем, перешел ли бот на финальный 7 этап
-        if "[Текущий этап: 7]" in bot_reply:
+        # Проверяем, перешел ли бот на финальный 9 этап (когда номер получен)
+        if "[Текущий этап: 9]" in bot_reply:
             # Запускаем сбор данных в фоне (не заставляя клиента ждать)
             import asyncio
             asyncio.create_task(extract_lead_data(user_id, tg_username))
@@ -125,7 +131,7 @@ async def process_text_with_ai(user_id: int, user_text: str, tg_username: str = 
 
 
 # 2. Обработка аудио
-async def process_audio_with_ai(file_path: str) -> str:
+async def process_audio_with_ai(user_id: int, file_path: str, tg_username: str = "") -> str:
     try:
         with open(file_path, "rb") as audio_file:
             transcript = await openai_client.audio.transcriptions.create(
@@ -133,7 +139,8 @@ async def process_audio_with_ai(file_path: str) -> str:
                 file=audio_file
             )
         raw_text = transcript.text
-        return await process_text_with_ai(raw_text)  # Отправляем расшифрованный текст в функцию выше
+        # Теперь мы правильно передаем user_id и username
+        return await process_text_with_ai(user_id, raw_text, tg_username)
     except Exception as e:
         logging.error(f"Ошибка ИИ (аудио): {e}")
         return "❌ Ошибка при обработке аудио."
@@ -187,9 +194,9 @@ async def extract_lead_data(user_id: int, tg_username: str):
     extraction_prompt = (
         "Проанализируй этот диалог с клиентом фотостудии. "
         "Вытащи данные и верни ИХ СТРОГО В ФОРМАТЕ JSON без лишнего текста. "
-        "Ключи JSON: name, city, school, class_num, students_count, decision_maker, format. "
+        "Ключи JSON: name, phone, city, school, class_num, students_count, decision_maker, format. "
         "Если данных нет, пиши '-'. "
-        "Пример: {\"name\": \"Анна\", \"city\": \"Алматы\", \"school\": \"15\", \"class_num\": \"11А\", \"students_count\": \"20\", \"decision_maker\": \"родители\", \"format\": \"WhatsApp\"}"
+        "Пример: {\"name\": \"Анна\", \"phone\": \"+7 777 123 45 67\", \"city\": \"Алматы\", \"school\": \"15\", \"class_num\": \"11А\", \"students_count\": \"20\", \"decision_maker\": \"родители\", \"format\": \"WhatsApp\"}"
     )
 
     messages_to_send = history + [{"role": "system", "content": extraction_prompt}]

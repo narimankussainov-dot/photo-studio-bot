@@ -19,11 +19,17 @@ def append_to_sheet(data: dict):
         gc = gspread.authorize(credentials)
         sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
 
-        # Формируем строку для записи
+        # Убираем @None, если юзернейма нет
+        tg_username = data.get('tg_username', '')
+        if tg_username == '@None' or tg_username is None:
+            tg_username = '-'
+
+        # Формируем строку для записи (УБЕДИСЬ, ЧТО ПОРЯДОК СОВПАДАЕТ С КОЛОНКАМИ В ТАБЛИЦЕ)
         row = [
             datetime.now().strftime("%Y-%m-%d %H:%M"),
-            data.get('tg_username', '@unknown'),
+            tg_username,
             data.get('name', '-'),
+            data.get('phone', '-'),  # <-- НОВАЯ КОЛОНКА ДЛЯ ТЕЛЕФОНА
             data.get('city', '-'),
             data.get('school', '-'),
             data.get('class_num', '-'),

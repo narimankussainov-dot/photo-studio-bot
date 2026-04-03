@@ -71,7 +71,7 @@ async def handle_voice(message: Message, bot: Bot):
     file_path = f"temp_voice_{message.from_user.id}.ogg"
     await bot.download_file(file.file_path, file_path)
 
-    response = await process_audio_with_ai(file_path)
+    response = await process_audio_with_ai(message.from_user.id, file_path, message.from_user.username)
     await status_msg.edit_text(response)
 
 
