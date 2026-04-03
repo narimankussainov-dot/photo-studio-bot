@@ -4,6 +4,25 @@ from aiogram.types import Message
 from database import add_user
 from aiogram.filters import Command
 from ai_service import process_audio_with_ai, process_text_with_ai, process_image_with_ai, reset_user_history
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+
+def is_working_hours() -> bool:
+    """Проверяет, рабочее ли сейчас время (UTC+5)"""
+    tz = ZoneInfo("Asia/Almaty")
+    now = datetime.now(tz)
+
+    # 5 = Суббота, 6 = Воскресенье (работает круглосуточно)
+    if now.weekday() in [5, 6]:
+        return True
+
+    # Будние дни: работает с 19:00 вечера до 09:59 утра
+    if now.hour >= 19 or now.hour < 10:
+        return True
+
+    return False
+
 
 router = Router()
 
@@ -23,6 +42,12 @@ async def cmd_reset(message: Message):
 # 1. Текст
 @router.message(F.text)
 async def handle_text(message: Message):
+    # --- НОВЫЙ БЛОК ПРОВЕРКИ ВРЕМЕНИ ---
+    if not is_working_hours():
+        await message.reply(
+            "Здравствуйте! Наш бот-помощник работает с 19:00 до 10:00 в будние дни и круглосуточно в выходные. Оставьте свой вопрос, и менеджер свяжется с вами в рабочее время!")
+        return
+
     register_user(message)
     status_msg = await message.reply("⏳ Печатаю ответ...")
     response = await process_text_with_ai(message.from_user.id, message.text, message.from_user.username)
@@ -32,6 +57,12 @@ async def handle_text(message: Message):
 # 2. Аудио
 @router.message(F.voice)
 async def handle_voice(message: Message, bot: Bot):
+    # --- НОВЫЙ БЛОК ПРОВЕРКИ ВРЕМЕНИ ---
+    if not is_working_hours():
+        await message.reply(
+            "Здравствуйте! Наш бот-помощник работает с 19:00 до 10:00 в будние дни и круглосуточно в выходные. Оставьте свой вопрос, и менеджер свяжется с вами в рабочее время!")
+        return
+
     register_user(message)
     status_msg = await message.reply("⏳ Слушаю...")
 
@@ -47,6 +78,12 @@ async def handle_voice(message: Message, bot: Bot):
 # 3. НОВОЕ: Фотографии (Референсы)
 @router.message(F.photo)
 async def handle_photo(message: Message, bot: Bot):
+    # --- НОВЫЙ БЛОК ПРОВЕРКИ ВРЕМЕНИ ---
+    if not is_working_hours():
+        await message.reply(
+            "Здравствуйте! Наш бот-помощник работает с 19:00 до 10:00 в будние дни и круглосуточно в выходные. Оставьте свой вопрос, и менеджер свяжется с вами в рабочее время!")
+        return
+
     register_user(message)
     status_msg = await message.reply("⏳ Рассматриваю фотографию...")
 
