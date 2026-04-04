@@ -1,6 +1,7 @@
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # Настройки доступа
 SCOPES = [
@@ -24,12 +25,15 @@ def append_to_sheet(data: dict):
         if tg_username == '@None' or tg_username is None:
             tg_username = '-'
 
-        # Формируем строку для записи (УБЕДИСЬ, ЧТО ПОРЯДОК СОВПАДАЕТ С КОЛОНКАМИ В ТАБЛИЦЕ)
+        # --- Задаем часовой пояс (UTC+5) ---
+        tz = ZoneInfo("Asia/Almaty")
+
+        # Формируем строку для записи
         row = [
-            datetime.now().strftime("%Y-%m-%d %H:%M"),
+            datetime.now(tz).strftime("%Y-%m-%d %H:%M"),  # <-- Передали tz внутрь now()
             tg_username,
             data.get('name', '-'),
-            data.get('phone', '-'),  # <-- НОВАЯ КОЛОНКА ДЛЯ ТЕЛЕФОНА
+            data.get('phone', '-'),
             data.get('city', '-'),
             data.get('school', '-'),
             data.get('class_num', '-'),
